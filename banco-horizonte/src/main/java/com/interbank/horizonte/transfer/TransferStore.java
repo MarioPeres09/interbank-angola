@@ -89,6 +89,14 @@ class TransferStore {
                     VALUES (:account, :id, 'DEBIT', :amount)
                     """).param("account", transfer.sourceAccountId()).param("id", id)
                     .param("amount", transfer.amount()).update();
+            db.sql("""
+                    INSERT INTO transfer_outbox (transfer_id, payload)
+                    VALUES (:id, jsonb_build_object(
+                        'type', 'transfer.completed', 'sourceBank', 'HORIZONTE',
+                        'transferId', CAST(:id AS text), 'amount', CAST(:amount AS numeric),
+                        'currency', 'AOA', 'completedAt', now()
+                    ))
+                    """).param("id", id).param("amount", transfer.amount()).update();
         } else {
             db.sql("UPDATE accounts SET available_balance = available_balance + :amount WHERE id = :account")
                     .param("amount", transfer.amount()).param("account", transfer.sourceAccountId()).update();

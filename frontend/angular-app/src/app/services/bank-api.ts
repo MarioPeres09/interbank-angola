@@ -29,6 +29,10 @@ export class BankApi {
     return this.http.get<CreditReceipt>(`${this.api}/transfers/${encodeURIComponent(id)}/receipt`);
   }
 
+  resolvePhone(phone: string) {
+    return this.http.post<{ accountNumber: string }>(this.api + '/transfers/resolve-phone', { phone });
+  }
+
   send(id: string, request: TransferRequest) {
     return this.http.post<Transfer>(this.api + '/transfers', request, {
       headers: { 'Idempotency-Key': id },

@@ -33,6 +33,7 @@ import jakarta.validation.constraints.Positive;
 class CreditRouter {
     private static final Logger log = LoggerFactory.getLogger(CreditRouter.class);
     private static final String CREDITS = "/api/interbank/credits";
+    private static final String PHONE = "/api/interbank/aliases/phone";
     private final Map<String, RestClient> destinations;
 
     CreditRouter(@Value("${rede.kwanza.url}") String kwanzaUrl,
@@ -60,24 +61,30 @@ class CreditRouter {
     @PostMapping(CREDITS)
     ResponseEntity<byte[]> forward(@RequestBody @Valid CreditRequest request, Principal bank) {
         return exchange(destinations.get(bank.getName()).post().uri(CREDITS)
-                .contentType(MediaType.APPLICATION_JSON).body(request), bank.getName(), request.id());
+                .contentType(MediaType.APPLICATION_JSON).body(request), bank.getName(), request.id().toString());
     }
 
     @GetMapping(CREDITS + "/{id}")
     ResponseEntity<byte[]> receipt(@PathVariable UUID id, Principal bank) {
-        return exchange(destinations.get(bank.getName()).get().uri(CREDITS + "/{id}", id), bank.getName(), id);
+        return exchange(destinations.get(bank.getName()).get().uri(CREDITS + "/{id}", id), bank.getName(), id.toString());
     }
 
-    private ResponseEntity<byte[]> exchange(RestClient.RequestHeadersSpec<?> request, String origin, UUID id) {
+    @PostMapping(PHONE)
+    ResponseEntity<byte[]> phone(@RequestBody @Valid PhoneRequest request, Principal bank) {
+        return exchange(destinations.get(bank.getName()).post().uri(PHONE)
+                .contentType(MediaType.APPLICATION_JSON).body(request), bank.getName(), "consulta de telemóvel");
+    }
+
+    private ResponseEntity<byte[]> exchange(RestClient.RequestHeadersSpec<?> request, String origin, String reference) {
         try {
             return request.exchange((sent, response) -> {
-                log.info("Pedido de {} com referência {} devolveu HTTP {}", origin, id, response.getStatusCode().value());
+                log.info("Pedido de {} ({}) devolveu HTTP {}", origin, reference, response.getStatusCode().value());
                 return ResponseEntity.status(response.getStatusCode()).contentType(MediaType.APPLICATION_JSON)
                         .body(response.getBody().readAllBytes());
             });
         } catch (RestClientException exception) {
             log.warn("Destino indisponível para pedido de {} com referência {} ({})",
-                    origin, id, exception.getClass().getSimpleName());
+                    origin, reference, exception.getClass().getSimpleName());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Banco de destino indisponível");
         }
     }
@@ -85,4 +92,6 @@ class CreditRouter {
     record CreditRequest(@NotNull UUID id,
                          @NotNull @Pattern(regexp = "[A-Za-z0-9-]{1,32}") String destinationAccount,
                          @NotNull @Positive @Digits(integer = 17, fraction = 2) BigDecimal amount) {}
+
+    record PhoneRequest(@NotNull @Pattern(regexp = "[+]2449[0-9]{8}") String phone) {}
 }

@@ -1,0 +1,102 @@
+name: interbank-angola
+
+x-postgres: &postgres
+  image: postgres:18
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres -d \"$$POSTGRES_DB\""]
+    interval: 5s
+    timeout: 3s
+    retries: 12
+
+x-bank: &bank
+  SERVER_ADDRESS: 0.0.0.0
+  INTERBANK_ROUTER_URL: http://rede-interbancaria:8083
+  INTERBANK_SHARED_PASSWORD: ${INTERBANK_SHARED_PASSWORD:?Preenche INTERBANK_SHARED_PASSWORD em .env.compose}
+  HORIZONTE_INTERBANK_PASSWORD: ${HORIZONTE_INTERBANK_PASSWORD:?Preenche HORIZONTE_INTERBANK_PASSWORD em .env.compose}
+
+services:
+  postgres-kwanza:
+    <<: *postgres
+    environment:
+      POSTGRES_PASSWORD: ${COMPOSE_POSTGRES_PASSWORD:?Preenche COMPOSE_POSTGRES_PASSWORD em .env.compose}
+      POSTGRES_DB: banco_kwanza
+      APP_DB_USER: interbank_kwanza
+      APP_DB_PASSWORD: ${KWANZA_DB_PASSWORD:?Preenche KWANZA_DB_PASSWORD em .env.compose}
+    volumes:
+      - kwanza-data:/var/lib/postgresql
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-interbank.sql:ro
+      - ./docker/demo-user.sql:/opt/interbank/demo-user.sql:ro
+    networks: [kwanza-data]
+
+  postgres-horizonte:
+    <<: *postgres
+    environment:
+      POSTGRES_PASSWORD: ${COMPOSE_POSTGRES_PASSWORD:?Preenche COMPOSE_POSTGRES_PASSWORD em .env.compose}
+      POSTGRES_DB: banco_horizonte
+      APP_DB_USER: interbank_horizonte
+      APP_DB_PASSWORD: ${HORIZONTE_DB_PASSWORD:?Preenche HORIZONTE_DB_PASSWORD em .env.compose}
+    volumes:
+      - horizonte-data:/var/lib/postgresql
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/10-interbank.sql:ro
+      - ./docker/demo-user.sql:/opt/interbank/demo-user.sql:ro
+    networks: [horizonte-data]
+
+  banco-kwanza:
+    build:
+      context: .
+      dockerfile: docker/java.Dockerfile
+      args: { SERVICE: banco-kwanza }
+    environment:
+      <<: *bank
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-kwanza:5432/banco_kwanza
+      KWANZA_DB_PASSWORD: ${KWANZA_DB_PASSWORD:?Preenche KWANZA_DB_PASSWORD em .env.compose}
+      KWANZA_JWT_SECRET: ${KWANZA_JWT_SECRET:?Preenche KWANZA_JWT_SECRET em .env.compose}
+    ports: ["127.0.0.1:18081:8081"]
+    networks: [default, kwanza-data]
+    depends_on:
+      postgres-kwanza: { condition: service_healthy }
+      rede-interbancaria: { condition: service_started }
+
+  banco-horizonte:
+    build:
+      context: .
+      dockerfile: docker/java.Dockerfile
+      args: { SERVICE: banco-horizonte }
+    environment:
+      <<: *bank
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-horizonte:5432/banco_horizonte
+      HORIZONTE_DB_PASSWORD: ${HORIZONTE_DB_PASSWORD:?Preenche HORIZONTE_DB_PASSWORD em .env.compose}
+      HORIZONTE_JWT_SECRET: ${HORIZONTE_JWT_SECRET:?Preenche HORIZONTE_JWT_SECRET em .env.compose}
+    ports: ["127.0.0.1:18082:8082"]
+    networks: [default, horizonte-data]
+    depends_on:
+      postgres-horizonte: { condition: service_healthy }
+      rede-interbancaria: { condition: service_started }
+
+  rede-interbancaria:
+    build:
+      context: .
+      dockerfile: docker/java.Dockerfile
+      args: { SERVICE: rede-interbancaria }
+    environment:
+      <<: *bank
+      KWANZA_BASE_URL: http://banco-kwanza:8081
+      HORIZONTE_BASE_URL: http://banco-horizonte:8082
+    ports: ["127.0.0.1:18083:8083"]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/angular.Dockerfile
+    ports: ["127.0.0.1:14200:80"]
+    depends_on: [banco-kwanza, banco-horizonte]
+
+volumes:
+  kwanza-data:
+  horizonte-data:
+
+networks:
+  kwanza-data:
+    internal: true
+  horizonte-data:
+    internal: true

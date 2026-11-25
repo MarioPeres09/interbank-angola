@@ -8,6 +8,19 @@
 }
 *, *::before, *::after { box-sizing: border-box; }
 body { margin: 0; }
+.brand-mark {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: .67rem;
+  background: #086955;
+  color: #fff;
+  font-size: .875rem;
+  font-weight: 800;
+  line-height: 1;
+}
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: default; opacity: .6; }

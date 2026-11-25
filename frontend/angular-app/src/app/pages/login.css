@@ -1,8 +1,5 @@
 .login-page { min-height: 100vh; display: grid; grid-template-columns: minmax(15rem, 1fr) minmax(0, 1.35fr); }
 .login-brand {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
   display: grid;
   align-content: center;
   min-height: 13rem;
@@ -10,21 +7,8 @@
   color: white;
   background: linear-gradient(145deg, #075646, #0c6b55);
 }
-.login-brand::after {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  height: 50%;
-  width: 95%;
-  bottom: -14%;
-  right: -43%;
-  border: 1px solid #ffffff62;
-  box-shadow: 0 0 0 2rem #ffffff12, 0 0 0 5rem #ffffff0d;
-  border-radius: 26% 65% 21% 49%;
-  transform: rotate(-28deg);
-}
 .login-brand strong { font-size: clamp(1.8rem, 4vw, 3.35rem); letter-spacing: -.06em; line-height: 1.1; }
-.login-brand span { margin-top: .6rem; font-weight: 700; }
+.login-brand > span { margin-top: .6rem; font-weight: 700; }
 .login-brand p { margin: .5rem 0 0; color: #d0f3e9; }
 .horizonte .login-brand { background: linear-gradient(145deg, #293a8d, #445cba); }
 .horizonte .login-brand p { color: #e8edff; }

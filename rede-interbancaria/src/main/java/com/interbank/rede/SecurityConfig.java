@@ -29,6 +29,7 @@ class SecurityConfig {
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/network/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/interbank/credits").hasRole("BANCO")
+                        .requestMatchers(HttpMethod.POST, "/api/interbank/aliases/phone").hasRole("BANCO")
                         .requestMatchers(HttpMethod.GET, "/api/interbank/credits/*").hasRole("BANCO")
                         .anyRequest().denyAll())
                 .httpBasic(Customizer.withDefaults())

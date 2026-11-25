@@ -57,6 +57,11 @@ export class BankDashboard implements OnInit {
   protected readonly receiptError = signal('');
   protected source: number | null = null;
   protected destination = '';
+  protected destinationType: 'account' | 'phone' = 'account';
+  protected phone = '';
+  protected readonly resolvedAccount = signal('');
+  protected readonly phoneLoading = signal(false);
+  protected readonly phoneError = signal('');
   protected amount = '';
   protected receiptId = '';
 
@@ -116,9 +121,10 @@ export class BankDashboard implements OnInit {
   }
 
   protected async submit(): Promise<void> {
-    if (this.attempt() || this.sending()) return;
+    if (this.attempt() || this.sending() || this.phoneLoading()) return;
     const amount = this.amount.trim().replace(',', '.');
-    const destination = this.destination.trim().toUpperCase();
+    const destination = this.destinationType === 'phone'
+      ? this.resolvedAccount() : this.destination.trim().toUpperCase();
     if (this.source === null || !accountPattern.test(destination)
         || !amountPattern.test(amount) || !/[1-9]/.test(amount)) {
       this.transferError.set('Escolhe uma conta de origem e indica um destino e um montante positivo válido.');
@@ -128,6 +134,32 @@ export class BankDashboard implements OnInit {
       id: crypto.randomUUID(),
       request: { sourceAccountId: this.source, destinationAccount: destination, amount },
     });
+  }
+
+  protected updatePhone(value: string): void {
+    this.phone = value;
+    this.resolvedAccount.set('');
+    this.phoneError.set('');
+  }
+
+  protected async lookupPhone(): Promise<void> {
+    const phone = this.phone.trim();
+    if (this.phoneLoading() || !phone) return;
+    this.resolvedAccount.set('');
+    this.phoneError.set('');
+    this.phoneLoading.set(true);
+    try {
+      const destination = await firstValueFrom(this.api.resolvePhone(phone));
+      if (this.phone.trim() === phone) this.resolvedAccount.set(destination.accountNumber);
+    } catch (error) {
+      this.phoneError.set(apiError(error, {
+        400: 'Indica um número de telemóvel válido, com ou sem +244.',
+        404: 'Este telemóvel não tem uma conta activa no banco de destino.',
+        502: 'O banco de destino está indisponível. Tenta novamente.',
+      }));
+    } finally {
+      this.phoneLoading.set(false);
+    }
   }
 
   protected async retry(): Promise<void> {
@@ -147,6 +179,7 @@ export class BankDashboard implements OnInit {
       if (transfer.status !== 'PENDING') {
         this.saveAttempt(null);
         this.destination = '';
+        this.updatePhone('');
         this.amount = '';
       }
     } catch (error) {

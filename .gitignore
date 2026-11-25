@@ -1,4 +1,5 @@
 /documentation/
 /.env.local
 /.env.compose
+/.env.rabbitmq
 /.interbank-control.log

@@ -267,6 +267,110 @@ Abro `http://127.0.0.1:8083/api/network/health` e verifico que o serviço devolv
 
 Para verificar o fluxo na interface, envio um valor fictício entre as duas contas e procuro a mesma referência no terminal da rede. Para testar a recuperação, paro a rede, envio outro pedido e verifico que fica `PENDING`. Quando a rede volta, o banco de origem retoma o envio com a mesma referência.
 
+## Evolução — Docker Compose
+
+O Compose reúne a interface, os dois bancos, a rede e **dois PostgreSQL independentes**. Cada banco usa o seu próprio volume. As bases dos contentores começam vazias e os saldos do PostgreSQL instalado no Windows ficam nesse ambiente.
+
+### Instalar no Windows
+
+1. Abro um **CMD como administrador** e instalo o WSL com `wsl --install --no-distribution`. Reinicio o Windows se for pedido. Depois confirmo com `wsl --version` e actualizo com `wsl --update` se necessário. [Comandos oficiais do WSL](https://learn.microsoft.com/windows/wsl/reference)
+2. Instalo **Docker Desktop para Windows x86-64**, com o motor **WSL 2**, e abro a aplicação pelo menu Iniciar. O Docker Desktop já inclui o Compose. [Instalar Docker Desktop](https://docs.docker.com/desktop/setup/install/windows-install/) · [Instalar Compose](https://docs.docker.com/compose/install/)
+3. Num novo CMD do VS Code, confirmo o cliente com `docker compose version` e o motor com `docker info`.
+
+### Arrancar os contentores
+
+Na raiz do projecto, copio o modelo uma vez e preencho os sete valores. Uso segredos JWT distintos e credenciais diferentes para cada sentido. A palavra-passe `COMPOSE_POSTGRES_PASSWORD` é a do administrador das bases dos contentores. O Git ignora `.env.compose`.
+
+```bat
+copy .env.compose.example .env.compose
+docker compose --env-file .env.compose config --quiet
+docker compose --env-file .env.compose up -d --build
+docker compose --env-file .env.compose ps
+```
+
+Abro a interface em [127.0.0.1:14200](http://127.0.0.1:14200/). As APIs do Kwanza, do Horizonte e da rede usam, respectivamente, as portas `18081`, `18082` e `18083` no Windows. Estas portas permitem manter o ambiente local do painel nas suas portas habituais. Para ver a saída de um serviço, uso, por exemplo, `docker compose --env-file .env.compose logs -f banco-kwanza`.
+
+### Criar as contas da demonstração
+
+Depois de os dois bancos arrancarem e o Flyway criar as tabelas, executo os comandos abaixo. Cada um pede uma palavra-passe para um cliente fictício. Posso repetir os comandos para actualizar a palavra-passe sem repor os saldos.
+
+```bat
+docker compose --env-file .env.compose exec postgres-kwanza psql -U postgres -d banco_kwanza -v demo_email=cliente@exemplo.test -v demo_account=BK-000123 -f /opt/interbank/demo-user.sql
+docker compose --env-file .env.compose exec postgres-horizonte psql -U postgres -d banco_horizonte -v demo_email=cliente.horizonte@exemplo.test -v demo_account=BH-000245 -f /opt/interbank/demo-user.sql
+```
+
+Entro em cada banco na porta `14200` com o respectivo email e palavra-passe. Para parar o ambiente e conservar os volumes com os saldos, executo `docker compose --env-file .env.compose down`.
+
+## Evolução — RabbitMQ
+
+O RabbitMQ guarda mensagens para que um produtor e um consumidor possam trabalhar em momentos diferentes. Uso-o para distribuir eventos de transferências concluídas. As transferências continuam a usar a rede interbancária.
+
+Na raiz do projecto, preparo o ficheiro `.env.rabbitmq` uma única vez. Se já existir, uso o ficheiro existente. O Git ignora-o.
+
+```bat
+copy .env.rabbitmq.example .env.rabbitmq
+node -p "require('node:crypto').randomBytes(32).toString('hex')"
+```
+
+Coloco o valor gerado em `RABBITMQ_DEFAULT_PASS` e arranco só o RabbitMQ. Preciso dos dois ficheiros de ambiente porque o Compose valida também a configuração dos bancos.
+
+```bat
+docker compose --env-file .env.compose --env-file .env.rabbitmq -f compose.yaml -f compose.rabbitmq.yaml up -d --wait rabbitmq
+```
+
+Abro o [painel do RabbitMQ](http://127.0.0.1:15672/) com as credenciais do `.env.rabbitmq`. A porta `15672` serve a administração local. As aplicações dentro do Compose vão usar o protocolo AMQP em `rabbitmq:5672`, no ambiente virtual `interbank`. [Painel de administração RabbitMQ](https://www.rabbitmq.com/docs/management)
+
+Para experimentar, em **Queues and Streams** escolho o ambiente `interbank` e crio a fila `interbank.demo`. Abro essa fila, uso **Publish message** para enviar um texto de teste e **Get messages** para o ler. O volume próprio conserva os dados do broker quando paro e volto a arrancar o contentor.
+
+### Notificações de transferências
+
+O banco de origem grava o evento `transfer.completed` na tabela `transfer_outbox` na mesma transacção PostgreSQL que confirma o débito. Um processo separado publica o evento na fila `interbank.notifications` e marca-o como publicado depois de o RabbitMQ confirmar. Se o broker estiver parado, a transferência pode concluir e o evento fica guardado para reenvio.
+
+O serviço `notificacoes` lê a fila e grava um ficheiro por banco de origem e referência. Um pedido repetido ou uma mensagem entregue novamente não cria outra notificação. Para esta etapa, a notificação fica no volume local e aparece no log do serviço.
+
+```bat
+docker compose --env-file .env.compose --env-file .env.rabbitmq -f compose.yaml -f compose.rabbitmq.yaml up -d --build
+docker compose --env-file .env.compose --env-file .env.rabbitmq -f compose.yaml -f compose.rabbitmq.yaml logs -f notificacoes
+```
+
+No Angular em `http://127.0.0.1:14200/`, faço uma transferência e comparo a referência do recibo com a mensagem **Notificação de transferência concluída registada**. A fila pode voltar a zero rapidamente porque o serviço lê e confirma a mensagem.
+
+## Evolução — Transferências por telemóvel
+
+Cada banco pode associar um telemóvel a uma conta. Ao procurar um número, o banco de origem consulta a rede interbancária, que encaminha a consulta para o banco de destino. A interface mostra o número da conta encontrada para eu o confirmar. A transferência guarda essa conta como destino, pelo que um reenvio usa a mesma conta que confirmei.
+
+### Associar os números de teste
+
+Depois de actualizar os contentores e de o Flyway aplicar as novas migrações, abro o PostgreSQL do Kwanza pelo CMD:
+
+```bat
+docker compose --env-file .env.compose exec postgres-kwanza psql -U postgres -d banco_kwanza
+```
+
+Executo o SQL e saio do `psql` com `\q`.
+
+```sql
+UPDATE public.accounts
+SET transfer_phone = '+244900000001'
+WHERE account_number = 'BK-000123'
+RETURNING account_number, transfer_phone;
+```
+
+No Horizonte, entro na outra base e associo o segundo número.
+
+```bat
+docker compose --env-file .env.compose exec postgres-horizonte psql -U postgres -d banco_horizonte
+```
+
+```sql
+UPDATE public.accounts
+SET transfer_phone = '+244900000002'
+WHERE account_number = 'BH-000245'
+RETURNING account_number, transfer_phone;
+```
+
+Na interface, abro **Transferências**, escolho **Número de telemóvel** e uso `900000002` quando entro pelo Kwanza ou `900000001` quando entro pelo Horizonte. Depois de clicar em **Procurar conta**, confiro a conta de destino, escrevo o montante e envio. Posso introduzir o número com ou sem o prefixo `+244`.
+
 ## Plano de implementação
 
 1. Preparei o ambiente, o repositório, os diagramas e as bases de dados.

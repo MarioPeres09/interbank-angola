@@ -1,6 +1,6 @@
 export const banks = {
-  kwanza: { name: 'Banco Kwanza', example: 'BK-000123', api: '/api', peer: 'horizonte' },
-  horizonte: { name: 'Banco Horizonte', example: 'BH-000245', api: '/horizonte/api', peer: 'kwanza' },
+  kwanza: { name: 'Banco Kwanza', initials: 'BK', example: 'BK-000123', api: '/api', peer: 'horizonte' },
+  horizonte: { name: 'Banco Horizonte', initials: 'BH', example: 'BH-000245', api: '/horizonte/api', peer: 'kwanza' },
 } as const;
 
 export type Bank = keyof typeof banks;

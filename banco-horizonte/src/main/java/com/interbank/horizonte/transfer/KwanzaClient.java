@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -73,6 +74,23 @@ class KwanzaClient {
                     transfer.id(), exception.getClass().getSimpleName());
         }
         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Recibo do Kwanza indisponível");
+    }
+
+    PhoneDestination resolvePhone(String phone) {
+        try {
+            PhoneDestination destination = client.post().uri("/api/interbank/aliases/phone")
+                    .contentType(MediaType.APPLICATION_JSON).body(Map.of("phone", phone))
+                    .retrieve().body(PhoneDestination.class);
+            if (destination != null && destination.accountNumber() != null
+                    && destination.accountNumber().matches("[A-Za-z0-9-]{1,32}")) {
+                return destination;
+            }
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Telemóvel sem conta activa");
+        } catch (RestClientException exception) {
+            log.warn("Consulta de telemóvel indisponível no Kwanza ({})", exception.getClass().getSimpleName());
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Banco de destino indisponível");
     }
 
     private boolean matches(Transfer transfer, CreditReceipt receipt) {

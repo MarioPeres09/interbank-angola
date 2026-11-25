@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.interbank.horizonte.transfer.Transfer.Status;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 @RestController
 @RequestMapping("/api/transfers")
@@ -56,4 +58,11 @@ public class TransferController {
     public KwanzaClient.CreditReceipt receipt(@PathVariable UUID id, JwtAuthenticationToken authentication) {
         return kwanza.receipt(get(id, authentication));
     }
+
+    @PostMapping("/resolve-phone")
+    public PhoneDestination resolvePhone(@RequestBody @Valid PhoneRequest request) {
+        return kwanza.resolvePhone(PhoneDestination.normalize(request.phone()));
+    }
+
+    public record PhoneRequest(@NotBlank @Size(max = 24) String phone) {}
 }

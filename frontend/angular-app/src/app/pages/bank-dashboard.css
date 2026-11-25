@@ -33,24 +33,10 @@
   color: var(--ink);
   font-size: 1.1rem;
   font-weight: 800;
-  white-space: nowrap;
+  text-align: left;
 }
-.brand strong { color: #086955; }
-.brand-mark {
-  display: flex;
-  align-items: end;
-  justify-content: center;
-  gap: .15rem;
-  width: 2.35rem;
-  height: 2.35rem;
-  padding: .55rem;
-  background: #086955;
-  border-radius: .67rem;
-}
-.brand-mark i { width: .23rem; height: .55rem; background: #d9fbef; border-radius: .15rem; }
-.brand-mark i:nth-child(2) { height: .85rem; }
-.brand-mark i:nth-child(3) { height: 1.15rem; }
 nav { display: grid; gap: .3rem; margin-top: 2.2rem; }
+.horizonte-mark { background: #364ca6; }
 .nav-label {
   display: block;
   padding: 0 .75rem;
@@ -87,7 +73,6 @@ nav button[aria-current] { background: var(--active); color: var(--accent-dark);
   background: #fff;
   border-bottom: 1px solid var(--line);
 }
-.bank-label { color: var(--accent-dark); font-weight: 800; }
 .topbar-actions { display: flex; align-items: center; flex-wrap: wrap; justify-content: end; gap: .45rem; }
 .customer-name { font-size: .875rem; }
 .content { max-width: 88rem; margin: 0 auto; padding: 2rem clamp(1rem, 4vw, 3.25rem) 3rem; }
@@ -111,9 +96,6 @@ p { color: var(--muted); line-height: 1.5; margin: .4rem 0 0; }
 .button.quiet:hover:not(:disabled) { background: var(--active); }
 .overview-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 1rem; margin-bottom: 1.1rem; }
 .balance-card {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
   min-height: 12.25rem;
   border-radius: 1rem;
   padding: 1.4rem 1.55rem;
@@ -122,16 +104,6 @@ p { color: var(--muted); line-height: 1.5; margin: .4rem 0 0; }
   justify-content: center;
   background: linear-gradient(135deg, var(--hero), var(--hero-end));
   color: #e7faf4;
-}
-.balance-card::after {
-  content: '';
-  z-index: -1;
-  position: absolute;
-  inset: 11% -15% -68% 56%;
-  transform: rotate(-22deg);
-  border: 1px solid #ffffff50;
-  border-radius: 24% 70% 16% 25%;
-  box-shadow: 0 0 0 1.4rem #ffffff12, 0 0 0 3.2rem #ffffff0d;
 }
 .balance-card strong { display: block; margin: .45rem 0; color: white; font-size: clamp(1.7rem, 4vw, 2.85rem); letter-spacing: -.045em; overflow-wrap: anywhere; }
 .balance-card div { font-size: .9rem; }
