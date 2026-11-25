@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
+import { Bank, banks } from '../models/bank';
 import { apiError } from '../services/bank-api';
 import { Session } from '../services/session';
 
@@ -11,11 +12,18 @@ import { Session } from '../services/session';
   styleUrl: './login.css',
 })
 export class Login {
-  private readonly session = inject(Session);
+  protected readonly session = inject(Session);
+  protected readonly banks = banks;
   protected email = '';
   protected password = '';
   protected readonly submitting = signal(false);
   protected readonly error = signal('');
+
+  protected selectBank(bank: Bank): void {
+    this.session.selectBank(bank);
+    this.password = '';
+    this.error.set('');
+  }
 
   protected async submit(): Promise<void> {
     if (this.submitting() || !this.email.trim() || !this.password) return;

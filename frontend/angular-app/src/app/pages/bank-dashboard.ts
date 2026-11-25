@@ -4,7 +4,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
-import { Account, CreditReceipt, Transfer, TransferRequest } from '../models/bank';
+import { Account, AccountMovement, banks, CreditReceipt, Transfer, TransferRequest } from '../models/bank';
 import { BankApi, apiError } from '../services/bank-api';
 import { Session } from '../services/session';
 
@@ -25,7 +25,10 @@ const money = new Intl.NumberFormat('pt-AO', { minimumFractionDigits: 2, maximum
 export class BankDashboard implements OnInit {
   private readonly api = inject(BankApi);
   protected readonly session = inject(Session);
-  private readonly storageKey = `interbank.active-transfer.${this.session.customer()?.customerId}`;
+  protected readonly bank = this.session.bank();
+  protected readonly local = banks[this.bank];
+  protected readonly peer = banks[this.local.peer];
+  private readonly storageKey = `interbank.active-transfer.${this.bank}.${this.session.customer()?.customerId}`;
   protected readonly view = signal<View>('overview');
   protected readonly accounts = signal<Account[]>([]);
   protected readonly transfers = signal<Transfer[]>([]);
@@ -40,6 +43,10 @@ export class BankDashboard implements OnInit {
   );
   protected readonly loading = signal(false);
   protected readonly accountError = signal('');
+  protected readonly movementAccount = signal<Account | null>(null);
+  protected readonly movements = signal<AccountMovement[]>([]);
+  protected readonly movementError = signal('');
+  protected readonly movementLoading = signal(false);
   protected readonly historyError = signal('');
   protected readonly sending = signal(false);
   protected readonly transferError = signal('');
@@ -92,6 +99,20 @@ export class BankDashboard implements OnInit {
 
   protected format(value: number): string {
     return money.format(value) + ' Kz';
+  }
+
+  protected async showMovements(account: Account): Promise<void> {
+    this.movementAccount.set(account);
+    this.movements.set([]);
+    this.movementError.set('');
+    this.movementLoading.set(true);
+    try {
+      this.movements.set(await firstValueFrom(this.api.movements(account.id)));
+    } catch (error) {
+      this.movementError.set(apiError(error, { 404: 'A conta já não está disponível.' }));
+    } finally {
+      this.movementLoading.set(false);
+    }
   }
 
   protected async submit(): Promise<void> {
@@ -171,7 +192,15 @@ export class BankDashboard implements OnInit {
 
   private readAttempt(): Attempt | null {
     try {
-      const stored = sessionStorage.getItem(this.storageKey);
+      const previousKey = `interbank.active-transfer.${this.session.customer()?.customerId}`;
+      let stored = sessionStorage.getItem(this.storageKey);
+      if (!stored && this.bank === 'kwanza') {
+        stored = sessionStorage.getItem(previousKey);
+        if (stored) {
+          sessionStorage.setItem(this.storageKey, stored);
+          sessionStorage.removeItem(previousKey);
+        }
+      }
       return stored ? JSON.parse(stored) as Attempt : null;
     } catch {
       return null;

@@ -26,15 +26,19 @@
 .login-brand strong { font-size: clamp(1.8rem, 4vw, 3.35rem); letter-spacing: -.06em; line-height: 1.1; }
 .login-brand span { margin-top: .6rem; font-weight: 700; }
 .login-brand p { margin: .5rem 0 0; color: #d0f3e9; }
+.horizonte .login-brand { background: linear-gradient(145deg, #293a8d, #445cba); }
+.horizonte .login-brand p { color: #e8edff; }
 .login-content { display: grid; place-items: center; padding: 1.2rem; }
 .login-panel { width: min(27rem, 100%); padding: clamp(1.15rem, 4vw, 2rem); background: #fff; border: 1px solid var(--line); border-radius: 1rem; }
 h1 { font-size: clamp(1.65rem, 4vw, 2rem); letter-spacing: -.04em; margin: 0; }
 .login-panel > p { color: var(--muted); margin: .5rem 0 1.35rem; }
 form { display: grid; gap: .5rem; }
 label { font-weight: 700; font-size: .9rem; }
-input { width: 100%; border: 1px solid #acbcb8; border-radius: .55rem; padding: .65rem .75rem; margin-bottom: .4rem; }
+input, select { width: 100%; border: 1px solid #acbcb8; border-radius: .55rem; padding: .65rem .75rem; margin-bottom: .4rem; background: #fff; }
 button { background: #086955; color: #fff; font-weight: 750; border: 0; border-radius: .55rem; padding: .65rem; margin-top: .3rem; }
 button:hover:not(:disabled) { background: #055344; }
+.horizonte button { background: #364ca6; }
+.horizonte button:hover:not(:disabled) { background: #273986; }
 .error { margin: .25rem 0; color: #852b26; background: #ffedeb; padding: .65rem .75rem; border-radius: .5rem; }
 @media (max-width: 40rem) {
   .login-page { display: block; }

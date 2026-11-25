@@ -13,6 +13,8 @@
   --accent: #364ca6;
   --accent-dark: #273986;
   --active: #e8edff;
+  --hero: #293a8d;
+  --hero-end: #445cba;
 }
 .sidebar {
   display: flex;
@@ -141,6 +143,7 @@ p { color: var(--muted); line-height: 1.5; margin: .4rem 0 0; }
 .panel { padding: 1.1rem 1.25rem; min-width: 0; }
 .section-heading { margin-bottom: .65rem; }
 .account-grid, .form-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+.movement-panel { margin-top: 1rem; }
 .form-layout { align-items: start; }
 .form-panel { padding: 1.25rem; }
 form, fieldset { display: grid; gap: .5rem; }

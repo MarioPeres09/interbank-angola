@@ -85,8 +85,8 @@ class TransferStore {
             db.sql("UPDATE accounts SET balance = balance - :amount WHERE id = :account")
                     .param("amount", transfer.amount()).param("account", transfer.sourceAccountId()).update();
             db.sql("""
-                    INSERT INTO transactions (account_id, transfer_id, amount)
-                    VALUES (:account, :id, :amount)
+                    INSERT INTO transactions (account_id, transfer_id, type, amount)
+                    VALUES (:account, :id, 'DEBIT', :amount)
                     """).param("account", transfer.sourceAccountId()).param("id", id)
                     .param("amount", transfer.amount()).update();
         } else {

@@ -1,4 +1,4 @@
-<div class="layout" [class.horizonte]="view() === 'receipt'">
+<div class="layout" [class.horizonte]="(view() === 'receipt' ? local.peer : bank) === 'horizonte'">
   <aside class="sidebar">
     <button class="brand" type="button" (click)="open('overview')">
       <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
@@ -6,7 +6,7 @@
     </button>
 
     <nav aria-label="Navegação principal">
-      <span class="nav-label">Banco Kwanza</span>
+      <span class="nav-label">{{ local.name }}</span>
       <button type="button" [attr.aria-current]="view() === 'overview' ? 'page' : null" (click)="open('overview')">
         <span aria-hidden="true" class="nav-icon">◫</span> Visão geral
       </button>
@@ -19,18 +19,18 @@
       <button type="button" [attr.aria-current]="view() === 'history' ? 'page' : null" (click)="open('history')">
         <span aria-hidden="true" class="nav-icon">◷</span> Histórico
       </button>
-      <span class="nav-label secondary">Banco Horizonte</span>
+      <span class="nav-label secondary">{{ peer.name }}</span>
       <button type="button" [attr.aria-current]="view() === 'receipt' ? 'page' : null" (click)="open('receipt')">
         <span aria-hidden="true" class="nav-icon">▧</span> Recibos de crédito
       </button>
     </nav>
 
-    <div class="sidebar-foot"><span class="simulation-dot" aria-hidden="true"></span> Simulação académica</div>
+    <div class="sidebar-foot"><span class="simulation-dot" aria-hidden="true"></span> Plataforma de Transferências Interbancárias Instantâneas</div>
   </aside>
 
   <main id="conteudo">
     <header class="topbar">
-      <span class="bank-label">{{ view() === 'receipt' ? 'Banco Horizonte' : 'Banco Kwanza' }}</span>
+      <span class="bank-label">{{ view() === 'receipt' ? peer.name : local.name }}</span>
       <div class="topbar-actions">
         @if (view() !== 'receipt') {
           <button class="button quiet" type="button" (click)="refresh()" [disabled]="loading()">
@@ -58,7 +58,7 @@
             <section class="balance-card" aria-label="Saldo disponível">
               <span>Saldo disponível</span>
               <strong>{{ accountError() || loading() ? '—' : format(totalAvailable()) }}</strong>
-              <div>{{ accountError() || loading() ? 'Contas do Banco Kwanza' : accounts().length + ' conta(s) no Banco Kwanza' }}</div>
+              <div>{{ accountError() || loading() ? 'Contas do ' + local.name : accounts().length + ' conta(s) no ' + local.name }}</div>
             </section>
             <section class="stats" aria-label="Resumo das operações">
               <div class="stat">
@@ -80,7 +80,7 @@
           </section>
         }
         @case ('accounts') {
-          <div class="page-heading"><div><h1>Contas</h1><p>Saldos e valores disponíveis no Banco Kwanza.</p></div></div>
+          <div class="page-heading"><div><h1>Contas</h1><p>Saldos e valores disponíveis no {{ local.name }}.</p></div></div>
           @if (accountError()) { <p class="notice error" role="alert">{{ accountError() }}</p> }
           <div class="account-grid">
             @for (account of accounts(); track account.id) {
@@ -95,16 +95,48 @@
                   <div><dt>Saldo</dt><dd>{{ format(account.balance) }}</dd></div>
                   <div><dt>Disponível</dt><dd>{{ format(account.availableBalance) }}</dd></div>
                 </dl>
+                <button class="button quiet" type="button" (click)="showMovements(account)" [disabled]="movementLoading()">
+                  Ver movimentos
+                </button>
               </article>
             } @empty {
               @if (!accountError()) {
-                <p class="empty">{{ loading() ? 'A carregar contas…' : 'Ainda não existem contas no Banco Kwanza.' }}</p>
+                <p class="empty">{{ loading() ? 'A carregar contas…' : 'Ainda não existem contas no ' + local.name + '.' }}</p>
               }
             }
           </div>
+          @if (movementAccount(); as account) {
+            <section class="panel movement-panel" aria-live="polite">
+              <div class="section-heading">
+                <h2>Movimentos de {{ account.accountNumber }}</h2>
+                <button class="button quiet" type="button" (click)="showMovements(account)" [disabled]="movementLoading()">
+                  Actualizar movimentos
+                </button>
+              </div>
+              @if (movementError()) { <p class="notice error" role="alert">{{ movementError() }}</p> }
+              @else if (movementLoading()) { <p class="empty">A carregar movimentos…</p> }
+              @else if (movements().length) {
+                <div class="table-scroll" tabindex="0" role="region" aria-label="Movimentos da conta">
+                  <table>
+                    <thead><tr><th scope="col">Tipo</th><th scope="col">Data</th><th scope="col">Montante</th><th scope="col">Referência</th></tr></thead>
+                    <tbody>
+                      @for (item of movements(); track item.id) {
+                        <tr>
+                          <td>{{ item.type === 'CREDIT' ? 'Crédito' : 'Débito' }}</td>
+                          <td>{{ item.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+                          <td>{{ format(item.amount) }}</td>
+                          <td class="reference">{{ item.transferId }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else { <p class="empty">Ainda não há movimentos nesta conta.</p> }
+            </section>
+          }
         }
         @case ('transfer') {
-          <div class="page-heading"><div><h1>Nova transferência</h1><p>Envia kwanzas de uma conta Kwanza para o Banco Horizonte.</p></div></div>
+          <div class="page-heading"><div><h1>Nova transferência</h1><p>Envia kwanzas do {{ local.name }} para o {{ peer.name }}.</p></div></div>
           <div class="form-layout">
             <section class="panel form-panel">
               <h2>Dados da transferência</h2>
@@ -119,7 +151,7 @@
                     }
                   </select>
                   <label for="destination">Número da conta de destino</label>
-                  <input id="destination" name="destination" [(ngModel)]="destination" maxlength="32" placeholder="BH-000245" required>
+                  <input id="destination" name="destination" [(ngModel)]="destination" maxlength="32" [placeholder]="peer.example" required>
                   <label for="amount">Montante em kwanzas</label>
                   <input id="amount" name="amount" [(ngModel)]="amount" inputmode="decimal" maxlength="20" placeholder="0,00" required>
                   <button class="button primary" type="submit" [disabled]="!activeAccounts().length">Enviar transferência</button>
@@ -140,7 +172,7 @@
                 @if (transfer.status === 'COMPLETED') {
                   <button type="button" class="button quiet" (click)="viewReceipt(transfer)">Consultar recibo</button>
                 }
-                @if (transfer.status === 'FAILED') { <p>O Horizonte recusou o crédito. O valor reservado foi libertado.</p> }
+                @if (transfer.status === 'FAILED') { <p>O {{ peer.name }} recusou o crédito. O valor reservado foi libertado.</p> }
               }
               @if (attempt(); as pending) {
                 <p>Usa a mesma referência para retomar este pedido.</p>
@@ -153,14 +185,14 @@
           </div>
         }
         @case ('history') {
-          <div class="page-heading"><div><h1>Histórico</h1><p>Transferências iniciadas pelo Banco Kwanza.</p></div></div>
+          <div class="page-heading"><div><h1>Histórico</h1><p>Transferências iniciadas pelo {{ local.name }}.</p></div></div>
           @if (historyError()) { <p class="notice error" role="alert">{{ historyError() }}</p> }
           <section class="panel">
             <ng-container *ngTemplateOutlet="transferRows; context: { $implicit: transfers() }"></ng-container>
           </section>
         }
         @case ('receipt') {
-          <div class="page-heading"><div><h1>Recibos de crédito</h1><p>Consulta uma transferência recebida pelo Banco Horizonte.</p></div></div>
+          <div class="page-heading"><div><h1>Recibos de crédito</h1><p>Consulta uma transferência recebida pelo {{ peer.name }}.</p></div></div>
           <div class="form-layout">
             <section class="panel form-panel">
               <h2>Consultar referência</h2>
@@ -173,7 +205,7 @@
               </form>
             </section>
             <section class="panel form-panel" aria-live="polite">
-              <h2>Recibo do Horizonte</h2>
+              <h2>Recibo do {{ peer.name }}</h2>
               @if (receiptError()) { <p class="notice error" role="alert">{{ receiptError() }}</p> }
               @if (receipt(); as item) {
                 <span class="status" [class.positive]="item.status === 'CREDITED'" [class.negative]="item.status === 'REJECTED'">
@@ -208,7 +240,7 @@
         <tbody>
           @for (transfer of items; track transfer.id) {
             <tr>
-              <td><strong>{{ transfer.destinationAccount }}</strong><small>Banco Horizonte</small></td>
+              <td><strong>{{ transfer.destinationAccount }}</strong><small>{{ peer.name }}</small></td>
               <td>{{ transfer.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
               <td>{{ format(transfer.amount) }}</td>
               <td><ng-container *ngTemplateOutlet="statusBadge; context: { $implicit: transfer.status }"></ng-container></td>

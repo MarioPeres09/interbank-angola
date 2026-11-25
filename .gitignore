@@ -1,1 +1,4 @@
 /documentation/
+/.env.local
+/.env.compose
+/.interbank-control.log

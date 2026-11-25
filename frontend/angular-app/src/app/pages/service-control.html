@@ -1,0 +1,51 @@
+<main class="control">
+  <header class="header">
+    <div class="brand"><span aria-hidden="true">IB</span> InterBank Angola</div>
+    <span class="local">Ambiente local</span>
+  </header>
+
+  <section class="overview" aria-labelledby="control-title">
+    <div>
+      <h1 id="control-title">Controlo dos serviços</h1>
+      <p>Arranca e pára os componentes da plataforma no teu computador.</p>
+    </div>
+    <div class="count" aria-live="polite">
+      <strong>{{ online() }} / 4</strong>
+      <span>Portas activas</span>
+    </div>
+  </section>
+
+  @if (connectionError()) { <p class="message error" role="alert">{{ connectionError() }}</p> }
+  @if (actionError()) { <p class="message error" role="alert">{{ actionError() }}</p> }
+  @if (!services().length && !connectionError()) { <p role="status">A consultar serviços…</p> }
+
+  <div class="services">
+    @for (service of services(); track service.id) {
+      <section class="card" [attr.aria-labelledby]="'title-' + service.id">
+        <div class="card-top">
+          <div class="mark" aria-hidden="true">{{ info[service.id].mark }}</div>
+          <span class="state" [attr.data-state]="service.state" role="status">{{ labels[service.state] }}</span>
+        </div>
+        <h2 [id]="'title-' + service.id">{{ info[service.id].name }}</h2>
+        <p>{{ info[service.id].description }}</p>
+        @if (service.state === 'external') {
+          <p class="note">Fecha o processo que já usa esta porta para o gerir aqui.</p>
+        }
+        @if (service.message) { <p class="note error">{{ service.message }}</p> }
+        <footer>
+          <span class="port">Porta {{ service.port }}</span>
+          @if (service.state === 'on' || service.state === 'starting') {
+            <button type="button" class="stop" [disabled]="!!pending() || !!connectionError()"
+                    (click)="run(service, 'stop')">Parar</button>
+          } @else {
+            <button type="button" [disabled]="!!pending() || !!connectionError()
+                    || service.state === 'external' || service.state === 'stopping'"
+                    (click)="run(service, 'start')">Arrancar</button>
+          }
+        </footer>
+      </section>
+    }
+  </div>
+
+  <a class="customer-link" href="http://127.0.0.1:4200/" target="_blank" rel="noopener">Abrir área de clientes</a>
+</main>

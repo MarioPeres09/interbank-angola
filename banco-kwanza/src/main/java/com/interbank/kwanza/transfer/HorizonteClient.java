@@ -25,14 +25,14 @@ class HorizonteClient {
     private static final Logger log = LoggerFactory.getLogger(HorizonteClient.class);
     private final RestClient client;
 
-    HorizonteClient(@Value("${interbank.horizonte.base-url}") String baseUrl,
-                    @Value("${interbank.shared-password}") String password) {
+    HorizonteClient(@Value("${interbank.router-url}") String baseUrl,
+                    @Value("${interbank.outgoing-secret}") String password) {
         if (!password.matches("[!-~]{32,64}")) {
             throw new IllegalArgumentException("INTERBANK_SHARED_PASSWORD deve ter 32 a 64 caracteres ASCII sem espaços");
         }
         var transport = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
         var factory = new JdkClientHttpRequestFactory(transport);
-        factory.setReadTimeout(Duration.ofSeconds(3));
+        factory.setReadTimeout(Duration.ofSeconds(7));
         this.client = RestClient.builder().baseUrl(baseUrl).requestFactory(factory)
                 .defaultHeaders(headers -> headers.setBasicAuth("banco-kwanza", password)).build();
     }

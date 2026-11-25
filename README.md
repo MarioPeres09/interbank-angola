@@ -2,6 +2,29 @@
 
 Estou a desenvolver o InterBank Angola para a disciplina de Sistemas Distribuídos II. Quero simular uma transferência entre dois bancos fictícios. No fluxo que defini, o Banco Kwanza inicia a transferência e o Banco Horizonte valida a conta de destino e regista o crédito. Vou usar uma base de dados PostgreSQL para cada banco e uma API REST para a comunicação entre eles.
 
+## Arranque local com um comando
+
+Com o PostgreSQL a correr, executo `arrancar.cmd` no CMD do VS Code, a partir da raiz do projecto. Na primeira execução é criada uma cópia do modelo [`.env.local.example`](.env.local.example). Preencho o ficheiro `.env.local` com os seis valores que já usava nos terminais, no formato `NOME=valor`, sem escrever `set`. Se uma palavra-passe contiver `#`, escrevo o valor entre aspas. O Git ignora este ficheiro.
+
+```bat
+arrancar.cmd --check
+arrancar.cmd
+```
+
+O comando abre quatro janelas CMD para a rede interbancária, o Kwanza, o Horizonte e o Angular. O Angular instala as suas dependências no primeiro arranque, se necessário. Quando os serviços estiverem prontos, abro [InterBank Angola](http://127.0.0.1:4200/).
+
+Se os serviços já estiverem a correr, fecho os terminais anteriores antes de usar o comando. Para parar um serviço, uso `Ctrl+C` na janela correspondente. Quando voltar a trabalhar no projecto, basta correr `arrancar.cmd` novamente.
+
+## Painel gráfico de serviços
+
+Com o PostgreSQL a correr e o `.env.local` preenchido, faço duplo clique em **Abrir-Controlo.vbs** no Explorador do Windows. O atalho compila e abre o painel Angular em [127.0.0.1:4199/controlo](http://127.0.0.1:4199/controlo).
+
+No painel, uso **Arrancar** e **Parar** em cada serviço. Posso parar a rede para testar a recuperação enquanto os bancos e o painel continuam disponíveis. Também posso parar o Angular dos clientes na porta `4200` sem perder o painel. Fechar o separador do navegador mantém os serviços a correr.
+
+Se arranquei um serviço num CMD, o painel mostra **Processo externo**. Para o gerir pelo painel, primeiro paro-o nesse CMD e depois carrego em **Arrancar**. Se o atalho não abrir o painel, posso executar `controlo.cmd` no CMD para ver a saída da compilação. O atalho grava essa saída no ficheiro local `.interbank-control.log`, ignorado pelo Git.
+
+O arranque usa um JDK 21 ou superior. Se o Windows encontrar outra versão, posso indicar directamente a pasta do JDK em `.env.local`, por exemplo `JAVA_HOME="C:\Program Files\Java\jdk-23"`.
+
 ## Fase 1 — Preparação
 
 - Preparei o guia de instalação e o diagrama de arquitectura. Vou mantê-los na pasta local `documentation/` até à entrega final.
@@ -24,7 +47,8 @@ Estas definições aplicam-se ao CMD em que as executaste. Repete-as no segundo 
 
 ### Arrancar o Banco Kwanza
 
-Na versão actual do projecto, preparo também as variáveis da [Fase 5](#fase-5--segurança-e-recuperação) antes de arrancar cada banco.
+Na versão actual do projecto, preparo também as variáveis da [Fase 5](#fase-5--segurança-e-recuperação) e da [evolução para dois sentidos](#evolução--transferências-nos-dois-sentidos) antes de arrancar cada banco.
+Para enviar transferências e consultar os recibos do outro banco, arranco também a [rede interbancária](#evolução--rede-interbancária).
 
 No CMD, a partir da raiz do repositório, executa os comandos abaixo. Substitui o valor de exemplo pela palavra-passe que definiste para `interbank_kwanza`.
 
@@ -122,7 +146,7 @@ npm ci
 npm start
 ```
 
-Abro [InterBank Angola](http://127.0.0.1:4200/) no navegador. A instalação com `npm ci` usa as versões do `package-lock.json`. O comando `npm start` lança o servidor de desenvolvimento e encaminha os pedidos do Angular para o Kwanza (`8081`) através de `src/proxy.conf.json`. O Kwanza consulta os recibos junto do Horizonte e confirma antes se a transferência pertence ao cliente. Uso `npm run build` para verificar a compilação.
+Abro [InterBank Angola](http://127.0.0.1:4200/) no navegador. A instalação com `npm ci` usa as versões do `package-lock.json`. O comando `npm start` lança o servidor de desenvolvimento. O ficheiro `src/proxy.conf.json` encaminha os pedidos do Angular para a API do banco seleccionado. O banco de origem verifica se a transferência pertence ao cliente antes de consultar o recibo no banco de destino. Uso `npm run build` para verificar a compilação.
 
 ### Experimentar no navegador
 
@@ -187,6 +211,62 @@ Copio o campo `token` da resposta para **Authorization → Bearer Token** nos pe
 
 Para simular uma falha, paro o Horizonte e inicio uma nova transferência no Angular. Ela deve ficar pendente com o montante reservado. Depois de voltar a arrancar o Horizonte com a credencial interna, o Kwanza reenvia automaticamente o pedido com a referência original. A verificação corre em ciclos de 15 segundos por omissão. Uso **Actualizar dados** para confirmar o estado e os saldos no Angular.
 
+## Evolução — Transferências nos dois sentidos
+
+Os dois bancos têm os mesmos serviços para clientes. Posso iniciar sessão em qualquer um, consultar contas, ver movimentos de débito e crédito, enviar ao outro banco e acompanhar o histórico e os recibos. Cada banco valida as suas sessões, guarda os seus dados e recupera os seus pedidos pendentes.
+
+### Actualizar o ambiente existente
+
+Mantenho `INTERBANK_SHARED_PASSWORD` nos dois CMD para o sentido Kwanza → Horizonte. Gero agora **dois valores novos** com o comando Node.js da Fase 5. Defino o primeiro nos **dois CMD**, com exactamente o mesmo valor:
+
+```bat
+set "HORIZONTE_INTERBANK_PASSWORD=VALOR_GERADO_PARA_HORIZONTE_ENVIAR"
+```
+
+Defino o segundo **apenas no CMD do Horizonte**. O Kwanza continua a usar o seu próprio `KWANZA_JWT_SECRET`.
+
+```bat
+set "HORIZONTE_JWT_SECRET=VALOR_GERADO_PARA_O_JWT_DO_HORIZONTE"
+```
+
+Reinicio os dois backends. O Flyway aplica a `V4` no Kwanza e a `V3` no Horizonte. Estas migrações acrescentam o sentido inverso e preservam as contas, os saldos e os movimentos anteriores. Reinicio também o `npm start` para carregar o proxy actualizado.
+
+### Activar e testar o cliente Horizonte
+
+No pgAdmin, abro o **Query Tool da base `banco_horizonte`** como administrador. Se usei o email abaixo para criar a conta `BH-000245`, defino uma palavra-passe de teste para esse cliente. Ajusto o email se tiver usado outro.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+UPDATE public.users
+SET password_hash = crypt('PALAVRA_PASSE_DE_TESTE', gen_salt('bf', 12))
+WHERE email = 'cliente.horizonte@exemplo.test' AND role = 'CUSTOMER'
+RETURNING id, email;
+```
+
+No Angular, termino a sessão anterior, escolho **Banco Horizonte** e entro com o cliente que acabei de activar. Envio um montante fictício para `BK-000123`. Em **Contas → Ver movimentos**, confirmo o débito no Horizonte. Depois entro no **Banco Kwanza** para verificar o crédito. O Postman também pode testar o fluxo inverso na porta `8082` com um token emitido pelo Horizonte. A API de movimentos dos dois bancos é `GET /api/accounts/{id}/transactions`.
+
+## Evolução — Rede interbancária
+
+Os pedidos de transferência e de recibo passam pela rede interbancária fictícia na porta `8083`. A rede identifica o banco de origem pela credencial interna e encaminha o pedido para o outro banco. Cada banco continua responsável pelas suas contas, saldos e movimentos. A rede funciona sem uma base de dados própria.
+
+```text
+Angular → Banco de origem → Rede interbancária → Banco de destino
+```
+
+Num quarto CMD no VS Code, a partir da raiz do repositório, defino **os mesmos valores já configurados nos bancos**:
+
+```bat
+set "INTERBANK_SHARED_PASSWORD=VALOR_JA_USADO_PARA_KWANZA_ENVIAR"
+set "HORIZONTE_INTERBANK_PASSWORD=VALOR_JA_USADO_PARA_HORIZONTE_ENVIAR"
+cd rede-interbancaria
+mvnw.cmd spring-boot:run
+```
+
+Abro `http://127.0.0.1:8083/api/network/health` e verifico que o serviço devolve `{"status":"UP"}`. Reinicio os bancos para passarem a usar a rede. Se alterar a porta da rede, defino `INTERBANK_ROUTER_URL` nos dois CMD dos bancos. Se alterar as portas dos bancos, defino `KWANZA_BASE_URL` e `HORIZONTE_BASE_URL` no CMD da rede.
+
+Para verificar o fluxo na interface, envio um valor fictício entre as duas contas e procuro a mesma referência no terminal da rede. Para testar a recuperação, paro a rede, envio outro pedido e verifico que fica `PENDING`. Quando a rede volta, o banco de origem retoma o envio com a mesma referência.
+
 ## Plano de implementação
 
 1. Preparei o ambiente, o repositório, os diagramas e as bases de dados.
@@ -196,4 +276,4 @@ Para simular uma falha, paro o Horizonte e inicio uma nova transferência no Ang
 5. Usei Spring Security e JWT para proteger o acesso dos clientes e uma credencial interna para autenticar as chamadas ao Horizonte. Implementei a recuperação automática de operações pendentes.
 6. Vou preparar a demonstração, os diagramas finais, o relatório e a apresentação.
 
-Depois da primeira entrega, vou implementar por etapas as evoluções da secção 17 do PDF. Planeio adicionar Spring Cloud Gateway, Docker Compose, RabbitMQ, notificações e transferências por número de telemóvel. Também vou criar um serviço central fictício de interoperabilidade, separar os módulos em quatro microserviços, adicionar observabilidade e integrar outros bancos fictícios.
+Depois da primeira entrega, vou implementar por etapas as evoluções do projecto. Planeio adicionar Spring Cloud Gateway, Docker Compose, RabbitMQ, notificações e transferências por número de telemóvel. Também vou criar um serviço central fictício de interoperabilidade, separar os módulos em quatro microserviços, adicionar observabilidade e integrar outros bancos fictícios.

@@ -48,7 +48,7 @@ class CreditService {
         if (account.isEmpty()) {
             return;
         }
-        db.sql("INSERT INTO transactions (account_id, transfer_id, amount) VALUES (:account, :id, :amount)")
+        db.sql("INSERT INTO transactions (account_id, transfer_id, type, amount) VALUES (:account, :id, 'CREDIT', :amount)")
                 .param("account", account.get()).param("id", request.id()).param("amount", request.amount()).update();
         db.sql("UPDATE received_transfers SET status = 'CREDITED' WHERE id = :id")
                 .param("id", request.id()).update();

@@ -1,0 +1,33 @@
+:host { display: block; min-height: 100vh; background: #f1f5f4; color: #132b28; }
+.control { width: min(70rem, 100%); margin: 0 auto; padding: 0 clamp(1rem, 4vw, 3.25rem) 3rem; }
+.header, .brand, .overview, .card-top, footer { display: flex; align-items: center; }
+.header { justify-content: space-between; min-height: 4.75rem; gap: .75rem; }
+.brand { gap: .7rem; font-weight: 800; }
+.brand span { background: #086955; color: white; padding: .5rem .55rem; border-radius: .65rem; }
+.local, .port { font-size: .875rem; color: #4d6461; }
+.overview { background: #124e44; border-radius: 1rem; padding: clamp(1.2rem, 4vw, 2.4rem); color: white; justify-content: space-between; gap: 1rem; }
+h1 { margin: 0; font-size: clamp(1.8rem, 4.2vw, 3rem); letter-spacing: -.045em; line-height: 1.08; }
+.overview p { color: #e2f4eb; }
+p { margin: .45rem 0 0; line-height: 1.5; color: #4d6461; }
+.count { display: grid; flex: none; min-width: 7.25rem; gap: .2rem; padding: .65rem .9rem; border: 1px solid #7eb0a4; border-radius: .75rem; }
+.count strong { font-size: 1.65rem; }
+.count span { color: #e2f4eb; font-size: .875rem; }
+.services { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .95rem; margin: 1rem 0; }
+.card { display: flex; flex-direction: column; min-width: 0; background: white; padding: 1.1rem; border: 1px solid #d7e2df; border-radius: .9rem; }
+.card-top, footer { justify-content: space-between; gap: .65rem; }
+.mark { display: grid; place-items: center; min-width: 2.5rem; min-height: 2.5rem; background: #e3f1ec; color: #0c6250; border-radius: .6rem; font-size: 1.15rem; font-weight: 800; }
+.state { padding: .3rem .6rem; border-radius: 1.1rem; background: #edf1f2; font-size: .875rem; font-weight: 650; }
+.state[data-state='on'] { background: #ddf3e9; color: #105e46; }
+.state[data-state='starting'], .state[data-state='stopping'], .state[data-state='external'] { background: #fff0cf; color: #77490a; }
+.state[data-state='error'], .error { background: #ffedeb; color: #852b26; }
+h2 { margin: .75rem 0 0; font-size: 1.2rem; }
+.note, .message { padding: .55rem .7rem; border-radius: .5rem; font-size: .9rem; }
+.note:not(.error) { background: #f2f5f4; }
+footer { border-top: 1px solid #dce6e3; padding-top: .8rem; margin-top: 1rem; }
+button { min-width: 6rem; padding: .45rem .7rem; border-radius: .5rem; border: 1px solid transparent; color: white; background: #086955; font-weight: 750; }
+button.stop { border-color: #b5c9c2; background: #fff; color: #105e46; }
+.customer-link { display: inline-block; color: #105e46; font-weight: 750; text-underline-offset: .2rem; }
+@media (max-width: 42rem) {
+  .services { grid-template-columns: 1fr; }
+  .overview { align-items: start; flex-direction: column; }
+}

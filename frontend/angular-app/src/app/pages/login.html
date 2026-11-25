@@ -1,14 +1,20 @@
-<main class="login-page">
+<main class="login-page" [class.horizonte]="session.bank() === 'horizonte'">
   <section class="login-brand" aria-label="InterBank Angola">
     <strong>InterBank Angola</strong>
-    <span>Banco Kwanza</span>
-    <p>Simulação académica</p>
+    <span>{{ banks[session.bank()].name }}</span>
+    <p>Plataforma de Transferências Interbancárias Instantâneas</p>
   </section>
   <section class="login-content" aria-labelledby="login-title">
     <div class="login-panel">
       <h1 id="login-title">Iniciar sessão</h1>
-      <p>Acede às tuas contas e transferências no Banco Kwanza.</p>
+      <p>Acede às tuas contas e transferências no banco seleccionado.</p>
       <form (ngSubmit)="submit()" #loginForm="ngForm">
+        <label for="login-bank">Banco</label>
+        <select id="login-bank" name="bank" [ngModel]="session.bank()"
+                (ngModelChange)="selectBank($event)" [disabled]="submitting()">
+          <option value="kwanza">Banco Kwanza</option>
+          <option value="horizonte">Banco Horizonte</option>
+        </select>
         <label for="login-email">Email</label>
         <input id="login-email" name="email" type="email" email maxlength="254" autocomplete="username" [(ngModel)]="email" required>
         <label for="login-password">Palavra-passe</label>
